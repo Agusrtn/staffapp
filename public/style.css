@@ -562,7 +562,9 @@ html, body {
     gap: 10px;
 }
 
-#taskInput {
+#taskTitleInput,
+#taskDescInput,
+#taskDateInput {
     flex: 1;
     background: var(--light-bg);
     border: 1px solid var(--border-color);
@@ -573,8 +575,32 @@ html, body {
     outline: none;
 }
 
-#taskInput:focus {
+#taskTitleInput:focus,
+#taskDescInput:focus,
+#taskDateInput:focus {
     border-color: var(--primary);
+}
+
+.task-details {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.task-title {
+    font-weight: 600;
+    color: var(--white);
+}
+
+.task-desc {
+    font-size: 13px;
+    color: var(--secondary);
+}
+
+.task-date {
+    font-size: 12px;
+    color: var(--primary);
 }
 
 .add-task button {

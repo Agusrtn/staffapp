@@ -198,8 +198,9 @@ function renderCalendar() {
         
         // Check if there are tasks for this day
         const dayTasks = tasks.filter(t => {
-            const taskDate = new Date();
-            return !t.completed; // Show only incomplete tasks
+            if (t.completed || !t.date) return false;
+            const taskDate = new Date(t.date);
+            return taskDate.getDate() === i && taskDate.getMonth() === month && taskDate.getFullYear() === year;
         });
         
         if (dayTasks.length > 0) {
@@ -213,9 +214,14 @@ function renderCalendar() {
         }
         
         day.addEventListener('click', () => {
-            const dayTasks = tasks.filter(t => !t.completed);
+            const dayTasks = tasks.filter(t => {
+                if (t.completed || !t.date) return false;
+                const taskDate = new Date(t.date);
+                return taskDate.getDate() === i && taskDate.getMonth() === month && taskDate.getFullYear() === year;
+            });
             if (dayTasks.length > 0) {
-                showNotification(`${dayTasks.length} tarea${dayTasks.length > 1 ? 's' : ''} pendiente${dayTasks.length > 1 ? 's' : ''}`, 'success');
+                const titles = dayTasks.map(t => t.title).join(', ');
+                showNotification(`${dayTasks.length} tarea${dayTasks.length > 1 ? 's' : ''}: ${titles}`, 'success');
             } else {
                 showNotification(`Día ${i} seleccionado`, 'success');
             }
@@ -245,17 +251,27 @@ function nextMonth() {
 
 // ==================== TASKS ====================
 function addTask() {
-    const input = document.getElementById('taskInput');
-    const taskText = input.value.trim();
+    const titleInput = document.getElementById('taskTitleInput');
+    const descInput = document.getElementById('taskDescInput');
+    const dateInput = document.getElementById('taskDateInput');
+    const title = titleInput.value.trim();
+    const description = descInput.value.trim();
+    const date = dateInput.value;
     
-    if (!taskText) {
-        showNotification('Escribe una tarea', 'error');
+    if (!title) {
+        showNotification('Escribe un título para la tarea', 'error');
+        return;
+    }
+    if (!date) {
+        showNotification('Selecciona una fecha para la tarea', 'error');
         return;
     }
     
     const task = {
         id: Date.now(),
-        text: taskText,
+        title,
+        description,
+        date,
         completed: false
     };
     
@@ -268,7 +284,9 @@ function addTask() {
         body: JSON.stringify(task)
     });
     
-    input.value = '';
+    titleInput.value = '';
+    descInput.value = '';
+    dateInput.value = '';
     loadTasks();
     showNotification('Tarea agregada', 'success');
 }
@@ -290,6 +308,22 @@ function toggleTask(id) {
 }
 
 function loadTasks() {
+    // try to sync with server first
+    fetch('/tasks')
+        .then(res => res.json())
+        .then(data => {
+            // merge server tasks, prioritizing newest entries by id
+            tasks = data;
+            localStorage.setItem('tasks', JSON.stringify(tasks));
+            renderTasksList();
+        })
+        .catch(() => {
+            // fallback to local version if server unavailable
+            renderTasksList();
+        });
+}
+
+function renderTasksList() {
     const tasksList = document.getElementById('tasksList');
     tasksList.innerHTML = '';
     
@@ -298,7 +332,11 @@ function loadTasks() {
         taskItem.className = `task-item ${task.completed ? 'completed' : ''}`;
         taskItem.innerHTML = `
             <input type="checkbox" ${task.completed ? 'checked' : ''} onchange="toggleTask(${task.id})">
-            <span class="task-text">${task.text}</span>
+            <div class="task-details">
+                <span class="task-title">${task.title}</span>
+                <span class="task-desc">${escapeHtml(task.description)}</span>
+                <span class="task-date">${task.date}</span>
+            </div>
             <button class="task-delete" onclick="deleteTask(${task.id})">Eliminar</button>
         `;
         tasksList.appendChild(taskItem);
