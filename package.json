@@ -4,7 +4,8 @@
   "description": "Panel de staff",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "build": "echo \"no build\""
   },
   "dependencies": {
     "express": "^4.18.2",
