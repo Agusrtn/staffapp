@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Staff Login</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #5865F2;
+            --secondary: #72767D;
+            --dark-bg: #2C2F33;
+            --darker-bg: #23272A;
+            --light-bg: #36393F;
+            --white: #FFFFFF;
+        }
+
+        html, body {
+            height: 100%;
+            background: linear-gradient(135deg, var(--darker-bg) 0%, #1a1d20 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .login-container {
+            background: var(--dark-bg);
+            border: 1px solid #202225;
+            border-radius: 12px;
+            padding: 40px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .logo i {
+            font-size: 48px;
+            color: var(--primary);
+            margin-bottom: 12px;
+        }
+
+        .logo h1 {
+            color: var(--white);
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+
+        .logo p {
+            color: var(--secondary);
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .form-group label {
+            display: block;
+            color: var(--white);
+            margin-bottom: 8px;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 15px;
+            background: var(--light-bg);
+            border: 1px solid #202225;
+            border-radius: 6px;
+            color: var(--white);
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus {
+            border-color: var(--primary);
+        }
+
+        .form-group input::placeholder {
+            color: var(--secondary);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 25px;
+        }
+
+        button {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .btn-login {
+            background: var(--primary);
+            color: var(--white);
+        }
+
+        .btn-login:hover {
+            background: #4752C4;
+        }
+
+        .btn-register {
+            background: transparent;
+            border: 1px solid var(--primary);
+            color: var(--primary);
+        }
+
+        .btn-register:hover {
+            background: rgba(88, 101, 242, 0.1);
+        }
+
+        .error {
+            background: #F04747;
+            color: var(--white);
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            display: none;
+            font-size: 14px;
+        }
+
+        .success {
+            background: #43B581;
+            color: var(--white);
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            display: none;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="logo">
+            <i class="fas fa-users"></i>
+            <h1>Staff</h1>
+            <p>Panel de Gestión</p>
+        </div>
+
+        <div id="error" class="error"></div>
+        <div id="success" class="success"></div>
+
+        <div class="form-group">
+            <label>Usuario</label>
+            <input type="text" id="user" placeholder="Ingresa tu usuario">
+        </div>
+
+        <div class="form-group">
+            <label>Contraseña</label>
+            <input type="password" id="pass" placeholder="Ingresa tu contraseña">
+        </div>
+
+        <div class="button-group">
+            <button class="btn-login" onclick="login()">
+                <i class="fas fa-sign-in-alt"></i> Entrar
+            </button>
+            <button class="btn-register" onclick="register()">
+                <i class="fas fa-user-plus"></i> Registrar
+            </button>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+
+        function login() {
+            const user = document.getElementById("user").value.trim();
+            const password = document.getElementById("pass").value.trim();
+
+            if (!user || !password) {
+                showError("Completa todos los campos");
+                return;
+            }
+
+            fetch("/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ user, password })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    localStorage.setItem('currentUser', user);
+                    localStorage.setItem('currentRole', data.role);
+                    localStorage.setItem('currentProfilePic', data.profilePic);
+                    window.location = "dashboard.html";
+                } else {
+                    showError(data.message || "Usuario o contraseña incorrectos");
+                }
+            })
+            .catch(() => showError("Error de conexión"));
+        }
+
+        function register() {
+            const user = document.getElementById("user").value.trim();
+            const password = document.getElementById("pass").value.trim();
+
+            if (!user || !password) {
+                showError("Completa todos los campos");
+                return;
+            }
+
+            if (password.length < 4) {
+                showError("La contraseña debe tener al menos 4 caracteres");
+                return;
+            }
+
+            fetch("/register", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ user, password })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    showSuccess("¡Cuenta creada! Ya puedes iniciar sesión");
+                    document.getElementById("user").value = "";
+                    document.getElementById("pass").value = "";
+                } else {
+                    showError(data.message || "Error al crear cuenta");
+                }
+            })
+            .catch(() => showError("Error de conexión"));
+        }
+
+        function showError(msg) {
+            const error = document.getElementById("error");
+            error.textContent = msg;
+            error.style.display = "block";
+            setTimeout(() => { error.style.display = "none"; }, 4000);
+        }
+
+        function showSuccess(msg) {
+            const success = document.getElementById("success");
+            success.textContent = msg;
+            success.style.display = "block";
+            setTimeout(() => { success.style.display = "none"; }, 4000);
+        }
+
+        // Enter para enviar
+        document.addEventListener("keypress", (e) => {
+            if (e.key === "Enter") {
+                login();
+            }
+        });
+    </script>
+</body>
+</html>
