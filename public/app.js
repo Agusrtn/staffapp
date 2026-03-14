@@ -1,5 +1,7 @@
 // Base URL for backend API (adjust for local development)
-const API_BASE = window.API_BASE || (window.location.hostname === 'localhost' ? '' : 'https://staffapp-p0jo.onrender.com');
+// Use relative paths for local development (localhost / 127.0.0.1 / file://) so we don't accidentally point to a deployed URL.
+const isLocalhost = ['localhost', '127.0.0.1'].includes(window.location.hostname) || window.location.protocol === 'file:';
+const API_BASE = window.API_BASE || (isLocalhost ? '' : 'https://staffapp-p0jo.onrender.com');
 
 // Initialize Socket.io (connect to backend)
 const socket = io(API_BASE);
@@ -605,24 +607,51 @@ function loadAdminMembers() {
 
         const card = document.createElement('div');
         card.className = 'member-card admin-online';
-        card.innerHTML = `
-            <img src="${avatar}" alt="Avatar" class="member-avatar">
-            <div style="flex: 1;">
-                <p class="member-name">${user.user}${isMe ? ' (yo)' : ''}</p>
-                <p class="member-status ${statusClass}"><span class="status-dot ${statusClass}"></span> ${statusText}</p>
-            </div>
-            <div class="admin-actions">
-                <button class="remove-access-btn" ${isMe ? 'disabled' : ''} onclick="setUserAccess('${user.user}', '${user.approved ? 'disable' : 'enable'}')" title="${user.approved ? 'Revocar acceso' : 'Habilitar acceso'}">
-                    <i class="fas fa-${user.approved ? 'minus' : 'plus'}"></i>
-                </button>
-                <button class="remove-access-btn" ${isMe ? 'disabled' : ''} onclick="resetUserPassword('${user.user}')" title="Reiniciar contraseña">
-                    <i class="fas fa-key"></i>
-                </button>
-                <button class="remove-access-btn" ${isMe ? 'disabled' : ''} onclick="forceUserReconnect('${user.user}')" title="Forzar reconexión">
-                    <i class="fas fa-sync"></i>
-                </button>
-            </div>
+
+        const avatarEl = document.createElement('img');
+        avatarEl.src = avatar;
+        avatarEl.alt = 'Avatar';
+        avatarEl.className = 'member-avatar';
+
+        const infoEl = document.createElement('div');
+        infoEl.style.flex = '1';
+        infoEl.innerHTML = `
+            <p class="member-name">${user.user}${isMe ? ' (yo)' : ''}</p>
+            <p class="member-status ${statusClass}"><span class="status-dot ${statusClass}"></span> ${statusText}</p>
         `;
+
+        const actions = document.createElement('div');
+        actions.className = 'admin-actions';
+
+        const accessBtn = document.createElement('button');
+        accessBtn.className = 'remove-access-btn';
+        accessBtn.title = user.approved ? 'Revocar acceso' : 'Habilitar acceso';
+        accessBtn.disabled = isMe;
+        accessBtn.innerHTML = `<i class="fas fa-${user.approved ? 'minus' : 'plus'}"></i>`;
+        accessBtn.addEventListener('click', () => setUserAccess(user.user, user.approved ? 'disable' : 'enable'));
+
+        const passBtn = document.createElement('button');
+        passBtn.className = 'remove-access-btn';
+        passBtn.title = 'Reiniciar contraseña';
+        passBtn.disabled = isMe;
+        passBtn.innerHTML = '<i class="fas fa-key"></i>';
+        passBtn.addEventListener('click', () => resetUserPassword(user.user));
+
+        const reconnectBtn = document.createElement('button');
+        reconnectBtn.className = 'remove-access-btn';
+        reconnectBtn.title = 'Forzar reconexión';
+        reconnectBtn.disabled = isMe;
+        reconnectBtn.innerHTML = '<i class="fas fa-sync"></i>';
+        reconnectBtn.addEventListener('click', () => forceUserReconnect(user.user));
+
+        actions.appendChild(accessBtn);
+        actions.appendChild(passBtn);
+        actions.appendChild(reconnectBtn);
+
+        card.appendChild(avatarEl);
+        card.appendChild(infoEl);
+        card.appendChild(actions);
+
         container.appendChild(card);
     });
 }
@@ -690,7 +719,10 @@ function setUserAccess(user, action) {
     const actionLabel = action === 'disable' ? 'revocar el acceso' : 'habilitar el acceso';
     if (!confirm(`¿Quieres ${actionLabel} a ${user}?`)) return;
 
-    fetch(`${API_BASE}/admin/user/${encodeURIComponent(user)}/access`, {
+    const url = `${API_BASE}/admin/user/${encodeURIComponent(user)}/access`;
+    console.log('[ADMIN] setUserAccess', action, url);
+
+    fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action })
@@ -719,6 +751,7 @@ function setUserAccess(user, action) {
         loadAdminMembers();
     })
     .catch(err => {
+        console.error('[ADMIN] setUserAccess error', err);
         showNotification(err?.message || 'Error de conexión', 'error');
     });
 }
