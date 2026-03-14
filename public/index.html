@@ -182,9 +182,10 @@
         </div>
     </div>
 
-    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <script>
-        const socket = io();
+        const API_BASE = window.API_BASE || 'https://staffapp-p0jo.onrender.com';
+        const socket = io(API_BASE);
 
         function login() {
             const user = document.getElementById("user").value.trim();
@@ -195,7 +196,7 @@
                 return;
             }
 
-            fetch("/login", {
+            fetch(`${API_BASE}/login`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ user, password })
@@ -228,7 +229,7 @@
                 return;
             }
 
-            fetch("/register", {
+            fetch(`${API_BASE}/register`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ user, password })

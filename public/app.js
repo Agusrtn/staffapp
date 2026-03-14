@@ -1,5 +1,8 @@
-// Initialize Socket.io
-const socket = io();
+// Base URL for backend API (adjust for local development)
+const API_BASE = window.API_BASE || (window.location.hostname === 'localhost' ? '' : 'https://staffapp-p0jo.onrender.com');
+
+// Initialize Socket.io (connect to backend)
+const socket = io(API_BASE);
 
 // Global state
 let currentUser = localStorage.getItem('currentUser') || 'Usuario';
@@ -278,7 +281,7 @@ function addTask() {
     tasks.push(task);
     localStorage.setItem('tasks', JSON.stringify(tasks));
     
-    fetch('/tasks', {
+    fetch(`${API_BASE}/tasks`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(task)
@@ -309,7 +312,7 @@ function toggleTask(id) {
 
 function loadTasks() {
     // try to sync with server first
-    fetch('/tasks')
+    fetch(`${API_BASE}/tasks`)
         .then(res => res.json())
         .then(data => {
             // merge server tasks, prioritizing newest entries by id
@@ -361,7 +364,7 @@ function handleFileUpload(event) {
         const formData = new FormData();
         formData.append('file', file);
         
-        fetch('/upload', {
+        fetch(`${API_BASE}/upload`, {
             method: 'POST',
             body: formData
         }).then(() => {
@@ -449,7 +452,7 @@ function updateProfilePic() {
 
 // ==================== ADMIN FUNCTIONS ====================
 function loadAllUsers() {
-    fetch('/users')
+    fetch(`${API_BASE}/users`)
         .then(res => res.json())
         .then(users => {
             allUsers = users;
@@ -460,7 +463,7 @@ function loadAllUsers() {
 }
 
 function loadAccessRequests() {
-    fetch('/admin/requests')
+    fetch(`${API_BASE}/admin/requests`)
         .then(res => res.json())
         .then(requests => {
             displayAccessRequests(requests);
@@ -497,7 +500,7 @@ function displayAccessRequests(requests) {
 }
 
 function approveRequest(id) {
-    fetch(`/admin/request/${id}/approve`, { method: 'POST' })
+    fetch(`${API_BASE}/admin/request/${id}/approve`, { method: 'POST' })
         .then(res => res.json())
         .then(data => {
             if (data.success) {
@@ -509,7 +512,7 @@ function approveRequest(id) {
 }
 
 function denyRequest(id) {
-    fetch(`/admin/request/${id}/deny`, { method: 'POST' })
+    fetch(`${API_BASE}/admin/request/${id}/deny`, { method: 'POST' })
         .then(res => res.json())
         .then(data => {
             if (data.success) {
