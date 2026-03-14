@@ -23,43 +23,64 @@
 
         html, body {
             height: 100%;
-            background: linear-gradient(135deg, var(--darker-bg) 0%, #1a1d20 100%);
+            background: url('background.svg') center/cover no-repeat fixed;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             display: flex;
             align-items: center;
             justify-content: center;
+            overflow: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.55);
+            pointer-events: none;
         }
 
         .login-container {
-            background: var(--dark-bg);
-            border: 1px solid #202225;
-            border-radius: 12px;
+            background: rgba(20, 22, 28, 0.65);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 18px;
             padding: 40px;
             width: 100%;
-            max-width: 400px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+            max-width: 420px;
+            box-shadow: 0 16px 64px rgba(0,0,0,0.5);
+            backdrop-filter: blur(20px);
         }
 
         .logo {
-            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
             margin-bottom: 30px;
+            text-align: left;
         }
 
-        .logo i {
-            font-size: 48px;
-            color: var(--primary);
-            margin-bottom: 12px;
+        .login-logo {
+            width: 56px;
+            height: 56px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
 
-        .logo h1 {
+        .logo-text h1 {
             color: var(--white);
-            font-size: 28px;
-            margin-bottom: 8px;
+            font-size: 26px;
+            margin-bottom: 6px;
         }
 
-        .logo p {
+        .logo-text p {
             color: var(--secondary);
             font-size: 14px;
+            margin-bottom: 6px;
+        }
+
+        .deploy-version {
+            color: rgba(255,255,255,0.6);
+            font-size: 12px;
         }
 
         .form-group {
@@ -154,10 +175,12 @@
 <body>
     <div class="login-container">
         <div class="logo">
-            <i class="fas fa-users"></i>
-            <h1>Staff</h1>
-            <p>Panel de Gestión</p>
-            <div style="font-size:12px;color:#999;margin-top:6px;">Deploy version: <strong>2.1</strong></div>
+            <img src="logo.svg" alt="RTN Staff" class="login-logo">
+            <div class="logo-text">
+                <h1>Staff</h1>
+                <p>Panel de Gestión</p>
+                <div class="deploy-version">Deploy version: <strong>2.1</strong></div>
+            </div>
         </div>
 
         <div id="error" class="error"></div>
