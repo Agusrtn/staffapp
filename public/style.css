@@ -754,6 +754,12 @@ html, body {
     color: white;
 }
 
+.role-Administrador {
+    background: linear-gradient(135deg, #E17055, #D63031);
+    color: white;
+    box-shadow: 0 0 10px rgba(225, 112, 85, 0.3);
+}
+
 /* ==================== MODAL ==================== */
 .modal {
     display: none;

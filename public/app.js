@@ -6,7 +6,7 @@ const socket = io(API_BASE);
 
 // Global state
 let currentUser = localStorage.getItem('currentUser') || 'Usuario';
-let currentRole = localStorage.getItem('currentRole') || 'Staff';
+let currentRoles = JSON.parse(localStorage.getItem('currentRoles')) || ['Staff']; // Cambiar a array
 let currentProfilePic = localStorage.getItem('currentProfilePic') || `https://i.pravatar.cc/150?u=${currentUser}`;
 let members = [];
 let messages = JSON.parse(localStorage.getItem('messages')) || [];
@@ -15,18 +15,28 @@ let files = JSON.parse(localStorage.getItem('files')) || [];
 let currentDate = new Date();
 let allUsers = [];
 
+// Helper function to check if user has a specific role
+function hasRole(role) {
+    return currentRoles.includes(role);
+}
+
+// Helper function to check if user is admin (Director or Administrador)
+function isAdmin() {
+    return hasRole('Director') || hasRole('Administrador') || currentUser === 'Agustinson';
+}
+
 // Initialize dashboard on load
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('currentUser').textContent = currentUser;
     document.getElementById('profilePic').src = currentProfilePic;
     document.getElementById('modalProfilePic').src = currentProfilePic;
     
-    // Show admin button if user is Director
-    if (currentRole === 'Director' || currentUser === 'Agustinson') {
+    // Show admin button if user is admin
+    if (isAdmin()) {
         document.getElementById('adminBtn').style.display = 'flex';
     }
     
-    socket.emit('user_joined', { user: currentUser, role: currentRole });
+    socket.emit('user_joined', { user: currentUser, roles: currentRoles }); // Cambiar a roles
     loadMessages();
     loadTasks();
     loadFiles();
@@ -35,7 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadAllUsers();
     
     // If admin, load access requests and users
-    if (currentRole === 'Director' || currentUser === 'Agustinson') {
+    if (isAdmin()) {
         loadAccessRequests();
         loadUsersRoles();
     }
@@ -142,7 +152,7 @@ function loadMembers() {
     if (allUsers.length === 0) {
         allUsers = [{
             user: currentUser,
-            role: currentRole,
+            roles: currentRoles,
             profilePic: currentProfilePic,
             approved: true
         }];
@@ -155,12 +165,15 @@ function loadMembers() {
         const statusClass = isOnline ? '' : 'offline';
         const statusText = isOnline ? 'Activo' : 'Inactivo';
         
-        const roleClass = `role-${user.role.replace(/\\s+/g, '')}`;
+        // Mostrar el rol principal o todos los roles
+        const primaryRole = user.roles && user.roles.length > 0 ? user.roles[0] : 'Staff';
+        const allRolesText = user.roles && user.roles.length > 1 ? user.roles.join(', ') : primaryRole;
+        const roleClass = `role-${primaryRole.replace(/\s+/g, '')}`;
         
         card.innerHTML = `
             <img src="${user.profilePic}" alt="Avatar" class="member-avatar">
             <p class="member-name">${user.user}</p>
-            <span class="role-tag ${roleClass}">${user.role}</span>
+            <span class="role-tag ${roleClass}" title="${allRolesText}">${primaryRole}</span>
             <p class="member-status ${statusClass}"><span class="status-dot ${statusClass}"></span> ${statusText}</p>
         `;
         grid.appendChild(card);
@@ -526,7 +539,7 @@ function loadUsersRoles() {
     const container = document.getElementById('usersRoles');
     container.innerHTML = '';
     
-    const ROLES = ['Director', 'Co Director', 'Supervisor Staff', 'Senior Staff', 'Staff'];
+    const ROLES = ['Director', 'Co Director', 'Supervisor Staff', 'Senior Staff', 'Staff', 'Administrador'];
     
     allUsers.filter(u => u.user !== 'Agustinson').forEach(user => {
         const userDiv = document.createElement('div');
@@ -534,21 +547,28 @@ function loadUsersRoles() {
         
         let roleButtons = '<div class="role-selector">';
         ROLES.forEach(role => {
-            const isSelected = user.role === role ? 'selected' : '';
+            const isSelected = user.roles && user.roles.includes(role);
+            const action = isSelected ? 'remove' : 'add';
+            const buttonClass = isSelected ? 'selected' : '';
             roleButtons += `
-                <button class="role-option ${isSelected}" onclick="changeUserRole('${user.user}', '${role}')">
+                <button class="role-option ${buttonClass}" onclick="changeUserRole('${user.user}', '${role}', '${action}')">
                     ${role}
                 </button>
             `;
         });
         roleButtons += '</div>';
         
+        // Mostrar todos los roles del usuario
+        const rolesText = user.roles && user.roles.length > 0 ? user.roles.join(', ') : 'Staff';
+        const primaryRole = user.roles && user.roles.length > 0 ? user.roles[0] : 'Staff';
+        const roleClass = `role-${primaryRole.replace(/\s+/g, '')}`;
+        
         userDiv.innerHTML = `
             <div class="user-role-header">
                 <img src="${user.profilePic}" alt="Avatar" class="user-role-avatar">
                 <div>
                     <div class="user-role-name">${user.user}</div>
-                    <div class="role-tag role-${user.role.replace(/\\s+/g, '')}">${user.role}</div>
+                    <div class="role-tag ${roleClass}" title="${rolesText}">${rolesText}</div>
                 </div>
             </div>
             ${roleButtons}
@@ -557,16 +577,16 @@ function loadUsersRoles() {
     });
 }
 
-function changeUserRole(user, role) {
-    fetch(`/admin/user/${user}/role`, {
+function changeUserRole(user, role, action) {
+    fetch(`${API_BASE}/admin/user/${user}/role`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role })
+        body: JSON.stringify({ role, action })
     })
     .then(res => res.json())
     .then(data => {
         if (data.success) {
-            showNotification(`Rol de ${user} actualizado a ${role}`, 'success');
+            showNotification(`Rol ${action === 'add' ? 'agregado' : 'removido'}: ${role} para ${user}`, 'success');
             loadUsersRoles();
             loadAllUsers();
         }
@@ -588,7 +608,7 @@ socket.on('user_left', (data) => {
 });
 
 socket.on('new_access_request', (request) => {
-    if (currentRole === 'Director' || currentUser === 'Agustinson') {
+    if (isAdmin()) {
         loadAccessRequests();
         showNotification(`Nueva solicitud de ${request.user}`, 'success');
     }
@@ -596,8 +616,14 @@ socket.on('new_access_request', (request) => {
 
 socket.on('user_role_updated', (data) => {
     if (data.user === currentUser) {
-        currentRole = data.role;
-        localStorage.setItem('currentRole', data.role);
+        currentRoles = data.roles;
+        localStorage.setItem('currentRoles', JSON.stringify(data.roles));
+        showNotification('Tus roles han sido actualizados', 'success');
+        
+        // Recargar la página para aplicar cambios de permisos
+        setTimeout(() => location.reload(), 1000);
+    }
+});
         loadAllUsers();
     }
 });

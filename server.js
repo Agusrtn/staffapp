@@ -41,7 +41,7 @@ let io = null;
 const ADMIN_USER = {
   user: "Agustinson",
   password: "Maragus2417",
-  role: "Director",
+  roles: ["Director", "Administrador"], // Cambiar a array
   approved: true,
   profilePic: "https://i.pravatar.cc/150?u=Agustinson"
 };
@@ -52,7 +52,7 @@ if (!users.find(u => u.user === ADMIN_USER.user)) {
   saveData({ users, tasks, messages, accessRequests });
 }
 
-const ROLES = ["Director", "Co Director", "Supervisor Staff", "Senior Staff", "Staff"];
+const ROLES = ["Director", "Co Director", "Supervisor Staff", "Senior Staff", "Staff", "Administrador"];
 
 
 // ================= LOGIN =================
@@ -65,7 +65,7 @@ app.post("/login",(req,res)=>{
   if(found && found.approved){
     res.json({
       success:true,
-      role:found.role,
+      roles:found.roles || ["Staff"], // Cambiar a roles array
       profilePic:found.profilePic
     });
   }
@@ -99,6 +99,7 @@ app.post("/register",(req,res)=>{
     type:"register",
     user,
     password,
+    roles:["Staff"], // Asignar rol por defecto
     status:"pending",
     timestamp:new Date(),
     profilePic:`https://i.pravatar.cc/150?u=${user}`
@@ -117,7 +118,7 @@ app.post("/register",(req,res)=>{
 app.get("/users",(req,res)=>{
   res.json(users.map(u=>({
     user:u.user,
-    role:u.role,
+    roles:u.roles || ["Staff"], // Cambiar a roles
     profilePic:u.profilePic,
     approved:u.approved
   })));
@@ -140,7 +141,7 @@ app.post("/admin/request/:id/approve",(req,res)=>{
   users.push({
     user:request.user,
     password:request.password,
-    role:"Staff",
+    roles:request.roles || ["Staff"], // Usar roles del request
     approved:true,
     profilePic:request.profilePic
   });
@@ -169,6 +170,37 @@ app.post("/admin/request/:id/deny",(req,res)=>{
   if(io) io.emit("request_denied",{user:request.user});
 
   res.json({success:true});
+});
+
+
+// ================= CHANGE USER ROLES =================
+app.post("/admin/user/:user/role",(req,res)=>{
+  const {user} = req.params;
+  const {role, action} = req.body; // action: 'add', 'remove', 'set'
+
+  const foundUser = users.find(u => u.user === user);
+  if(!foundUser) return res.json({success:false, message:"Usuario no encontrado"});
+
+  if(!foundUser.roles) foundUser.roles = ["Staff"];
+
+  if(action === 'add' && !foundUser.roles.includes(role)){
+    foundUser.roles.push(role);
+  }
+  else if(action === 'remove'){
+    foundUser.roles = foundUser.roles.filter(r => r !== role);
+  }
+  else if(action === 'set'){
+    foundUser.roles = [role];
+  }
+
+  // Asegurar que tenga al menos un rol
+  if(foundUser.roles.length === 0) foundUser.roles = ["Staff"];
+
+  saveData({users,tasks,messages,accessRequests});
+
+  if(io) io.emit("user_role_updated", {user, roles: foundUser.roles});
+
+  res.json({success:true, roles: foundUser.roles});
 });
 
 
@@ -216,7 +248,7 @@ io.on("connection",(socket)=>{
       .filter(u => Array.from(connectedUsers.values()).includes(u.user))
       .map(u => ({
         user:u.user,
-        role:u.role,
+        roles:u.roles || ["Staff"], // Cambiar a roles
         profilePic:u.profilePic
       }));
 
