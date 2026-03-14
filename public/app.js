@@ -676,13 +676,23 @@ function setUserAccess(user, action) {
         body: JSON.stringify({ action })
     })
     .then(async res => {
-        const data = await res.json().catch(() => null);
-        if (!res.ok) {
-            throw new Error(data?.message || 'Error desconocido');
+        const text = await res.text().catch(() => '');
+        let data = null;
+        try {
+            data = text ? JSON.parse(text) : null;
+        } catch {
+            // no es JSON
         }
+
+        if (!res.ok) {
+            const message = data?.message || `${res.status} ${res.statusText}`;
+            throw new Error(message);
+        }
+
         if (!data || !data.success) {
             throw new Error(data?.message || 'Error en la respuesta');
         }
+
         showNotification(`${action === 'disable' ? 'Acceso revocado' : 'Acceso habilitado'} para ${user}`, 'success');
         loadAllUsers();
         loadMembers();
