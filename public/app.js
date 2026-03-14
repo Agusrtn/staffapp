@@ -1,7 +1,10 @@
 // Base URL for backend API (adjust for local development)
-// Use relative paths for local development (localhost / 127.0.0.1 / file://) so we don't accidentally point to a deployed URL.
-const isLocalhost = ['localhost', '127.0.0.1'].includes(window.location.hostname) || window.location.protocol === 'file:';
-const API_BASE = window.API_BASE || (isLocalhost ? '' : 'https://staffapp-p0jo.onrender.com');
+// If the app is opened via file://, use localhost:3000 so requests go to the running server.
+const isLocalhost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+const isFileProtocol = window.location.protocol === 'file:';
+const API_BASE = window.API_BASE || (isFileProtocol ? 'http://localhost:3000' : (isLocalhost ? '' : 'https://staffapp-p0jo.onrender.com'));
+
+console.log('API_BASE resolved to:', API_BASE, {hostname: window.location.hostname, protocol: window.location.protocol});
 
 // Initialize Socket.io (connect to backend)
 const socket = io(API_BASE);
@@ -738,6 +741,7 @@ function setUserAccess(user, action) {
 
         if (!res.ok) {
             const message = data?.message || `${res.status} ${res.statusText}`;
+            console.error('[ADMIN] setUserAccess non-ok response', { url, status: res.status, statusText: res.statusText, body: data });
             throw new Error(message);
         }
 
