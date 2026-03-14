@@ -661,21 +661,21 @@ function forceUserReconnect(user) {
     .catch(() => showNotification('Error de conexión', 'error'));
 }
 
-function clearMembers() {
-    if (!confirm('¿Eliminar todos los miembros (dejando solo Agustinson)?')) return;
+function clearConnectedMembers() {
+    if (!confirm('¿Eliminar todos los miembros conectados (dejando solo Agustinson)?')) return;
 
-    fetch(`${API_BASE}/admin/users/clear`, {
+    fetch(`${API_BASE}/admin/users/clear-connected`, {
         method: 'POST'
     })
     .then(res => res.json())
     .then(data => {
         if (data.success) {
-            showNotification(`Miembros eliminados: ${data.removed}`, 'success');
+            showNotification(`Miembros eliminados: ${data.removed}` + (data.removedUsers ? ` (${data.removedUsers.join(', ')})` : ''), 'success');
             loadAllUsers();
             loadMembers();
             loadAdminMembers();
         } else {
-            showNotification('No se pudieron eliminar los miembros', 'error');
+            showNotification('No se pudieron eliminar los miembros conectados', 'error');
         }
     })
     .catch(() => showNotification('Error de conexión', 'error'));
