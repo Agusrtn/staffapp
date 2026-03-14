@@ -224,8 +224,13 @@ app.post("/admin/user/:user/access",(req,res)=>{
   const {user} = req.params;
   const {action} = req.body; // 'disable' | 'enable'
 
+  console.log(`[ADMIN] access change request: user=${user} action=${action}`);
+
   const foundUser = users.find(u => u.user === user);
-  if(!foundUser) return res.json({success:false, message:"Usuario no encontrado"});
+  if(!foundUser) {
+    console.warn(`[ADMIN] user not found: ${user}`);
+    return res.status(404).json({success:false, message:"Usuario no encontrado"});
+  }
 
   if(action === 'disable') {
     foundUser.approved = false;
@@ -241,6 +246,9 @@ app.post("/admin/user/:user/access",(req,res)=>{
     }
   } else if(action === 'enable') {
     foundUser.approved = true;
+  } else {
+    console.warn(`[ADMIN] invalid action: ${action}`);
+    return res.status(400).json({success:false, message:"Acción inválida"});
   }
 
   saveData({users,tasks,messages,accessRequests});
