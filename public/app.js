@@ -534,6 +534,10 @@ function saveProfilePic(newPic) {
     document.getElementById('profilePic').src = newPic;
     document.getElementById('modalProfilePic').src = newPic;
 
+    // Actualizar mensajes locales para que reflejen el nuevo avatar
+    messages = messages.map(m => m.user === currentUser ? { ...m, profilePic: newPic } : m);
+    localStorage.setItem('messages', JSON.stringify(messages));
+
     // Actualizar en backend para que se refleje en otros usuarios
     fetch(`${API_BASE}/user/${encodeURIComponent(currentUser)}/profile-pic`, {
         method: 'POST',
@@ -597,24 +601,72 @@ function loadAdminMembers() {
         const statusText = isOnline ? 'Activo' : 'Inactivo';
         const statusClass = isOnline ? '' : 'offline';
         const avatar = getProfilePic(user.user);
+        const isMe = user.user === currentUser;
 
         const card = document.createElement('div');
         card.className = 'member-card admin-online';
         card.innerHTML = `
             <img src="${avatar}" alt="Avatar" class="member-avatar">
             <div style="flex: 1;">
-                <p class="member-name">${user.user}</p>
+                <p class="member-name">${user.user}${isMe ? ' (yo)' : ''}</p>
                 <p class="member-status ${statusClass}"><span class="status-dot ${statusClass}"></span> ${statusText}</p>
             </div>
-            <button class="remove-access-btn" onclick="setUserAccess('${user.user}', '${user.approved ? 'disable' : 'enable'}')" title="${user.approved ? 'Revocar acceso' : 'Habilitar acceso'}">
-                <i class="fas fa-${user.approved ? 'minus' : 'plus'}"></i>
-            </button>
+            <div class="admin-actions">
+                <button class="remove-access-btn" ${isMe ? 'disabled' : ''} onclick="setUserAccess('${user.user}', '${user.approved ? 'disable' : 'enable'}')" title="${user.approved ? 'Revocar acceso' : 'Habilitar acceso'}">
+                    <i class="fas fa-${user.approved ? 'minus' : 'plus'}"></i>
+                </button>
+                <button class="remove-access-btn" ${isMe ? 'disabled' : ''} onclick="resetUserPassword('${user.user}')" title="Reiniciar contraseña">
+                    <i class="fas fa-key"></i>
+                </button>
+                <button class="remove-access-btn" ${isMe ? 'disabled' : ''} onclick="forceUserReconnect('${user.user}')" title="Forzar reconexión">
+                    <i class="fas fa-sync"></i>
+                </button>
+            </div>
         `;
         container.appendChild(card);
     });
 }
 
+function resetUserPassword(user) {
+    if (!confirm(`¿Reiniciar contraseña de ${user} a "1234"?`)) return;
+
+    fetch(`${API_BASE}/admin/user/${encodeURIComponent(user)}/reset-password`, {
+        method: 'POST'
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(`Contraseña de ${user} reiniciada a "1234"`, 'success');
+        } else {
+            showNotification('No se pudo reiniciar la contraseña', 'error');
+        }
+    })
+    .catch(() => showNotification('Error de conexión', 'error'));
+}
+
+function forceUserReconnect(user) {
+    if (!confirm(`¿Forzar reconexión de ${user}?`)) return;
+
+    fetch(`${API_BASE}/admin/user/${encodeURIComponent(user)}/force-logout`, {
+        method: 'POST'
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(`Se forzó reconexión de ${user}`, 'success');
+        } else {
+            showNotification('No se pudo forzar reconexión', 'error');
+        }
+    })
+    .catch(() => showNotification('Error de conexión', 'error'));
+}
+
 function setUserAccess(user, action) {
+    if (user === currentUser) {
+        showNotification('No puedes cambiar tu propio acceso desde aquí.', 'error');
+        return;
+    }
+
     const actionLabel = action === 'disable' ? 'revocar el acceso' : 'habilitar el acceso';
     if (!confirm(`¿Quieres ${actionLabel} a ${user}?`)) return;
 
@@ -623,18 +675,22 @@ function setUserAccess(user, action) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action })
     })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            showNotification(`${action === 'disable' ? 'Acceso revocado' : 'Acceso habilitado'} para ${user}`, 'success');
-            loadAllUsers();
-            loadMembers();
-            loadAdminMembers();
-        } else {
-            showNotification('No se pudo actualizar el acceso', 'error');
+    .then(async res => {
+        const data = await res.json().catch(() => null);
+        if (!res.ok) {
+            throw new Error(data?.message || 'Error desconocido');
         }
+        if (!data || !data.success) {
+            throw new Error(data?.message || 'Error en la respuesta');
+        }
+        showNotification(`${action === 'disable' ? 'Acceso revocado' : 'Acceso habilitado'} para ${user}`, 'success');
+        loadAllUsers();
+        loadMembers();
+        loadAdminMembers();
     })
-    .catch(() => showNotification('Error de conexión', 'error'));
+    .catch(err => {
+        showNotification(err?.message || 'Error de conexión', 'error');
+    });
 }
 
 function loadAccessRequests() {

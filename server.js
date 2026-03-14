@@ -250,6 +250,41 @@ app.post("/admin/user/:user/access",(req,res)=>{
   res.json({success:true, approved: foundUser.approved});
 });
 
+// ================= RESET PASSWORD =================
+app.post("/admin/user/:user/reset-password", (req, res) => {
+  const {user} = req.params;
+
+  const foundUser = users.find(u => u.user === user);
+  if(!foundUser) return res.json({success:false, message:"Usuario no encontrado"});
+
+  // Reiniciar contraseña a un valor seguro por defecto (puede cambiarse)
+  const defaultPassword = "1234";
+  foundUser.password = defaultPassword;
+
+  saveData({users,tasks,messages,accessRequests});
+
+  res.json({success:true, password: defaultPassword});
+});
+
+// ================= FORCE LOGOUT =================
+app.post("/admin/user/:user/force-logout", (req, res) => {
+  const {user} = req.params;
+
+  const foundUser = users.find(u => u.user === user);
+  if(!foundUser) return res.json({success:false, message:"Usuario no encontrado"});
+
+  if(io) {
+    for (const [socketId, username] of connectedUsers.entries()) {
+      if (username === user) {
+        io.to(socketId).emit('force_logout');
+        io.sockets.sockets.get(socketId)?.disconnect(true);
+      }
+    }
+  }
+
+  res.json({success:true});
+});
+
 
 // ================= TASKS =================
 app.get("/tasks",(req,res)=>{
