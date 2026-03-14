@@ -1089,6 +1089,24 @@ body::before {
     border-bottom: 2px solid var(--border-color);
 }
 
+.admin-action-btn {
+    width: 100%;
+    padding: 10px 12px;
+    border: none;
+    border-radius: 8px;
+    background: rgba(255, 0, 0, 0.15);
+    color: var(--white);
+    cursor: pointer;
+    font-weight: 600;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.admin-action-btn:hover {
+    background: rgba(255, 0, 0, 0.25);
+}
 /* Access Requests */
 .access-request {
     background: var(--darker-bg);

@@ -661,6 +661,26 @@ function forceUserReconnect(user) {
     .catch(() => showNotification('Error de conexión', 'error'));
 }
 
+function clearMembers() {
+    if (!confirm('¿Eliminar todos los miembros (dejando solo Agustinson)?')) return;
+
+    fetch(`${API_BASE}/admin/users/clear`, {
+        method: 'POST'
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(`Miembros eliminados: ${data.removed}`, 'success');
+            loadAllUsers();
+            loadMembers();
+            loadAdminMembers();
+        } else {
+            showNotification('No se pudieron eliminar los miembros', 'error');
+        }
+    })
+    .catch(() => showNotification('Error de conexión', 'error'));
+}
+
 function setUserAccess(user, action) {
     if (user === currentUser) {
         showNotification('No puedes cambiar tu propio acceso desde aquí.', 'error');

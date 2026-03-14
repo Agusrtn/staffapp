@@ -293,6 +293,31 @@ app.post("/admin/user/:user/force-logout", (req, res) => {
   res.json({success:true});
 });
 
+// ================= CLEAR USERS (KEEP AGUSTINSON) =================
+app.post("/admin/users/clear", (req, res) => {
+  const originalCount = users.length;
+  users = users.filter(u => u.user === ADMIN_USER.user);
+
+  if (!users.find(u => u.user === ADMIN_USER.user)) {
+    users.push(ADMIN_USER);
+  }
+
+  saveData({users,tasks,messages,accessRequests});
+
+  if(io) {
+    // Force logout everyone else
+    for (const [socketId, username] of connectedUsers.entries()) {
+      if (username !== ADMIN_USER.user) {
+        io.to(socketId).emit('force_logout');
+        io.sockets.sockets.get(socketId)?.disconnect(true);
+      }
+    }
+    io.emit("update_members", [{ user: ADMIN_USER.user, roles: ADMIN_USER.roles, profilePic: ADMIN_USER.profilePic }]);
+  }
+
+  res.json({success:true, removed: originalCount - users.length});
+});
+
 
 // ================= TASKS =================
 app.get("/tasks",(req,res)=>{
