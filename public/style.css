@@ -760,6 +760,82 @@ html, body {
     box-shadow: 0 0 10px rgba(225, 112, 85, 0.3);
 }
 
+/* ==================== MEMBER ROLE MANAGEMENT ==================== */
+.member-roles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+    margin: 8px 0;
+}
+
+.clickable-role {
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.clickable-role:hover {
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.add-role-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border: 2px solid var(--primary);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--primary);
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-left: 4px;
+}
+
+.add-role-btn:hover {
+    background: var(--primary);
+    color: white;
+    transform: scale(1.1);
+}
+
+/* ==================== ROLE SELECTION MODAL ==================== */
+.role-modal {
+    max-width: 300px;
+}
+
+.role-modal h3 {
+    color: var(--white);
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.role-options {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.role-option-btn {
+    padding: 10px 15px;
+    background: var(--light-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--white);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: left;
+}
+
+.role-option-btn:hover {
+    background: var(--primary);
+    border-color: var(--primary);
+}
+
 /* ==================== MODAL ==================== */
 .modal {
     display: none;

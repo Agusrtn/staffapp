@@ -179,10 +179,28 @@ function loadMembers() {
         const allRolesText = user.roles && user.roles.length > 1 ? user.roles.join(', ') : primaryRole;
         const roleClass = `role-${primaryRole.replace(/\s+/g, '')}`;
         
+        // Si es admin, mostrar roles gestionables
+        let rolesHtml = '';
+        if (isAdmin() && user.user !== currentUser) {
+            // Mostrar roles existentes como clickeables para quitar
+            const userRoles = user.roles || ['Staff'];
+            rolesHtml = '<div class="member-roles">';
+            userRoles.forEach(role => {
+                const roleClassName = `role-${role.replace(/\s+/g, '')}`;
+                rolesHtml += `<span class="role-tag ${roleClassName} clickable-role" onclick="removeUserRole('${user.user}', '${role}')" title="Click para quitar rol">${role} ×</span>`;
+            });
+            // Botón para agregar nuevo rol
+            rolesHtml += `<span class="add-role-btn" onclick="showAddRoleModal('${user.user}')" title="Agregar rol">+</span>`;
+            rolesHtml += '</div>';
+        } else {
+            // Vista normal para no-admins
+            rolesHtml = `<span class="role-tag ${roleClass}" title="${allRolesText}">${primaryRole}</span>`;
+        }
+        
         card.innerHTML = `
             <img src="${user.profilePic}" alt="Avatar" class="member-avatar">
             <p class="member-name">${user.user}</p>
-            <span class="role-tag ${roleClass}" title="${allRolesText}">${primaryRole}</span>
+            ${rolesHtml}
             <p class="member-status ${statusClass}"><span class="status-dot ${statusClass}"></span> ${statusText}</p>
         `;
         grid.appendChild(card);
@@ -586,20 +604,80 @@ function loadUsersRoles() {
     });
 }
 
-function changeUserRole(user, role, action) {
+function removeUserRole(user, role) {
+    if (!confirm(`¿Estás seguro de quitar el rol "${role}" a ${user}?`)) {
+        return;
+    }
+    
     fetch(`${API_BASE}/admin/user/${user}/role`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role, action })
+        body: JSON.stringify({ role, action: 'remove' })
     })
     .then(res => res.json())
     .then(data => {
         if (data.success) {
-            showNotification(`Rol ${action === 'add' ? 'agregado' : 'removido'}: ${role} para ${user}`, 'success');
-            loadUsersRoles();
+            showNotification(`Rol "${role}" removido de ${user}`, 'success');
             loadAllUsers();
+            loadMembers();
+        } else {
+            showNotification('Error al remover rol', 'error');
         }
-    });
+    })
+    .catch(() => showNotification('Error de conexión', 'error'));
+}
+
+function showAddRoleModal(user) {
+    const availableRoles = ['Director', 'Co Director', 'Supervisor Staff', 'Senior Staff', 'Staff', 'Administrador'];
+    const userData = allUsers.find(u => u.user === user);
+    const currentRoles = userData ? (userData.roles || []) : [];
+    
+    // Filtrar roles que no tenga el usuario
+    const rolesToAdd = availableRoles.filter(role => !currentRoles.includes(role));
+    
+    if (rolesToAdd.length === 0) {
+        showNotification(`${user} ya tiene todos los roles disponibles`, 'error');
+        return;
+    }
+    
+    // Crear modal simple
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+        <div class="modal-content role-modal">
+            <span class="close" onclick="this.parentElement.parentElement.remove()">&times;</span>
+            <h3>Agregar rol a ${user}</h3>
+            <div class="role-options">
+                ${rolesToAdd.map(role => `
+                    <button class="role-option-btn" onclick="addUserRole('${user}', '${role}'); this.parentElement.parentElement.parentElement.remove()">
+                        ${role}
+                    </button>
+                `).join('')}
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    modal.style.display = 'block';
+}
+
+function addUserRole(user, role) {
+    fetch(`${API_BASE}/admin/user/${user}/role`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role, action: 'add' })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(`Rol "${role}" agregado a ${user}`, 'success');
+            loadAllUsers();
+            loadMembers();
+        } else {
+            showNotification('Error al agregar rol', 'error');
+        }
+    })
+    .catch(() => showNotification('Error de conexión', 'error'));
 }
 
 // ==================== SOCKET EVENTS ====================
