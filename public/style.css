@@ -383,14 +383,22 @@ body::before {
 }
 
 /* CALENDAR */
-.calendar-container {
-    background: var(--light-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 30px;
+.calendar-content {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    justify-content: center;
     width: 100%;
-    max-width: 900px;
-    margin: 0 auto;
+}
+
+.calendar-container {
+    background: rgba(20, 22, 28, 0.45);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 12px;
+    padding: 18px;
+    width: 100%;
+    max-width: 520px;
+    box-shadow: 0 16px 40px rgba(0,0,0,0.4);
 }
 
 .calendar-header {
@@ -478,6 +486,79 @@ body::before {
 .day.other-month:hover {
     background: var(--darker-bg);
     border-color: var(--border-color);
+}
+
+.day-events-panel {
+    display: none;
+    width: 320px;
+    max-width: 320px;
+    background: rgba(20, 22, 28, 0.55);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 16px 40px rgba(0,0,0,0.4);
+    min-height: 320px;
+    overflow-y: auto;
+}
+
+.day-events-panel.active {
+    display: block;
+}
+
+.day-events-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+}
+
+.day-events-header h3 {
+    font-size: 16px;
+    margin: 0;
+    color: var(--white);
+}
+
+.close-panel {
+    background: transparent;
+    border: none;
+    color: var(--white);
+    font-size: 22px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+}
+
+.close-panel:hover {
+    background: rgba(255,255,255,0.1);
+}
+
+.day-events-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.day-event-item {
+    background: rgba(0,0,0,0.35);
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.12);
+}
+
+.event-title {
+    font-weight: 700;
+    color: var(--white);
+    margin-bottom: 6px;
+}
+
+.event-desc {
+    font-size: 14px;
+    color: var(--secondary);
+}
+
+.no-events {
+    color: var(--secondary);
+    font-style: italic;
 }
 
 /* FILES */
@@ -1076,6 +1157,37 @@ body::before {
     width: 50px;
     height: 50px;
     border-radius: 50%;
+}
+
+/* Admin online members list */
+.admin-online {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--darker-bg);
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    margin-bottom: 10px;
+}
+
+.remove-access-btn {
+    margin-left: auto;
+    border: none;
+    background: rgba(255,0,0,0.2);
+    color: var(--white);
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+
+.remove-access-btn:hover {
+    background: rgba(255,0,0,0.35);
 }
 
 .user-role-name {

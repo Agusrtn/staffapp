@@ -144,6 +144,7 @@ function loadMessages() {
 socket.on('update_members', (membersList) => {
     members = membersList;
     loadMembers();
+    if (isAdmin()) loadAdminOnlineMembers();
 });
 
 socket.on('user_joined', (data) => {
@@ -257,17 +258,13 @@ function renderCalendar() {
         }
         
         day.addEventListener('click', () => {
+            const dayDate = new Date(year, month, i);
             const dayTasks = tasks.filter(t => {
                 if (t.completed || !t.date) return false;
                 const taskDate = new Date(t.date);
                 return taskDate.getDate() === i && taskDate.getMonth() === month && taskDate.getFullYear() === year;
             });
-            if (dayTasks.length > 0) {
-                const titles = dayTasks.map(t => t.title).join(', ');
-                showNotification(`${dayTasks.length} tarea${dayTasks.length > 1 ? 's' : ''}: ${titles}`, 'success');
-            } else {
-                showNotification(`Día ${i} seleccionado`, 'success');
-            }
+            showDayEvents(dayDate, dayTasks);
         });
         calendarDays.appendChild(day);
     }
@@ -280,6 +277,35 @@ function renderCalendar() {
         day.textContent = i;
         calendarDays.appendChild(day);
     }
+}
+
+function showDayEvents(date, dayTasks) {
+    const panel = document.getElementById('dayEventsPanel');
+    const title = document.getElementById('dayEventsTitle');
+    const list = document.getElementById('dayEventsList');
+
+    title.textContent = `Eventos del ${date.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}`;
+    list.innerHTML = '';
+
+    if (!dayTasks || dayTasks.length === 0) {
+        list.innerHTML = '<p class="no-events">Este día no tiene eventos fijados</p>';
+    } else {
+        dayTasks.forEach(task => {
+            const item = document.createElement('div');
+            item.className = 'day-event-item';
+            item.innerHTML = `
+                <div class="event-title">${escapeHtml(task.title)}</div>
+                <div class="event-desc">${escapeHtml(task.description || '')}</div>
+            `;
+            list.appendChild(item);
+        });
+    }
+
+    panel.classList.add('active');
+}
+
+function closeDayEvents() {
+    document.getElementById('dayEventsPanel').classList.remove('active');
 }
 
 function previousMonth() {
@@ -472,20 +498,42 @@ function closeProfileModal() {
 }
 
 function updateProfilePic() {
-    const input = document.getElementById('profileColorInput').value.trim();
-    
-    if (!input) {
-        showNotification('Ingresa un valor para la foto', 'error');
+    const fileInput = document.getElementById('profileFileInput');
+    const urlInput = document.getElementById('profileUrlInput').value.trim();
+
+    // Si el usuario sube un archivo, lo usamos como primera opción
+    if (fileInput.files && fileInput.files[0]) {
+        const file = fileInput.files[0];
+        const reader = new FileReader();
+        reader.onload = () => saveProfilePic(reader.result);
+        reader.onerror = () => showNotification('No se pudo leer el archivo', 'error');
+        reader.readAsDataURL(file);
         return;
     }
-    
-    const newPic = `https://i.pravatar.cc/150?u=${input}`;
+
+    if (!urlInput) {
+        showNotification('Selecciona una imagen o pega una URL', 'error');
+        return;
+    }
+
+    saveProfilePic(urlInput);
+}
+
+function saveProfilePic(newPic) {
     currentProfilePic = newPic;
-    
     localStorage.setItem('currentProfilePic', newPic);
     document.getElementById('profilePic').src = newPic;
     document.getElementById('modalProfilePic').src = newPic;
-    
+
+    // Actualizar en backend para que se refleje en otros usuarios
+    fetch(`${API_BASE}/user/${encodeURIComponent(currentUser)}/profile-pic`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ profilePic: newPic })
+    }).catch(() => {
+        // no hacemos nada si falla, la foto se mantiene en el cliente
+    });
+
     showNotification('Foto actualizada', 'success');
     closeProfileModal();
 }
@@ -496,10 +544,76 @@ function loadAllUsers() {
         .then(res => res.json())
         .then(users => {
             allUsers = users;
+
+            // Si hay datos del backend, sincronizar el perfil actual
+            const me = allUsers.find(u => u.user === currentUser);
+            if (me) {
+                if (me.profilePic) {
+                    currentProfilePic = me.profilePic;
+                    localStorage.setItem('currentProfilePic', me.profilePic);
+                    document.getElementById('profilePic').src = me.profilePic;
+                    document.getElementById('modalProfilePic').src = me.profilePic;
+                }
+                if (me.roles && Array.isArray(me.roles)) {
+                    currentRoles = me.roles;
+                    localStorage.setItem('currentRoles', JSON.stringify(currentRoles));
+                }
+            }
+
             if (isAdmin()) {
                 loadMembers();
+                loadAdminOnlineMembers();
             }
         });
+}
+
+function loadAdminOnlineMembers() {
+    const container = document.getElementById('onlineMembers');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    const onlineUsernames = Array.from(new Set(members.map(m => (typeof m === 'string' ? m : m.user))));
+    if (onlineUsernames.length === 0) {
+        container.innerHTML = '<p style="color: var(--secondary);">No hay usuarios conectados</p>';
+        return;
+    }
+
+    onlineUsernames.forEach(user => {
+        const userData = allUsers.find(u => u.user === user) || { user, profilePic: `https://i.pravatar.cc/150?u=${user}` };
+        const card = document.createElement('div');
+        card.className = 'member-card admin-online';
+        card.innerHTML = `
+            <img src="${userData.profilePic}" alt="Avatar" class="member-avatar">
+            <p class="member-name">${user}</p>
+            <button class="remove-access-btn" onclick="disableUserAccess('${user}')">
+                <i class="fas fa-minus"></i>
+            </button>
+        `;
+        container.appendChild(card);
+    });
+}
+
+function disableUserAccess(user) {
+    if (!confirm(`¿Quitar acceso a ${user}? Esto bloqueará su ingreso.`)) return;
+
+    fetch(`${API_BASE}/admin/user/${encodeURIComponent(user)}/access`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'disable' })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(`Acceso revocado para ${user}`, 'success');
+            loadAllUsers();
+            loadMembers();
+            loadAdminOnlineMembers();
+        } else {
+            showNotification('No se pudo revocar el acceso', 'error');
+        }
+    })
+    .catch(() => showNotification('Error de conexión', 'error'));
 }
 
 function loadAccessRequests() {
@@ -684,6 +798,7 @@ function addUserRole(user, role) {
 socket.on('update_members', (membersList) => {
     members = membersList;
     loadMembers();
+    if (isAdmin()) loadAdminOnlineMembers();
 });
 
 socket.on('user_joined', (data) => {
@@ -710,4 +825,41 @@ socket.on('user_role_updated', (data) => {
         // Recargar la página para aplicar cambios de permisos
         setTimeout(() => location.reload(), 1000);
     }
+});
+
+socket.on('force_logout', () => {
+    showNotification('Tu acceso fue revocado. Serás redirigido.', 'error');
+    setTimeout(() => {
+        localStorage.clear();
+        window.location.href = 'index.html';
+    }, 1500);
+});
+
+socket.on('user_profile_updated', (data) => {
+    const user = allUsers.find(u => u.user === data.user);
+    if (user) user.profilePic = data.profilePic;
+
+    if (data.user === currentUser) {
+        currentProfilePic = data.profilePic;
+        localStorage.setItem('currentProfilePic', data.profilePic);
+        document.getElementById('profilePic').src = data.profilePic;
+        document.getElementById('modalProfilePic').src = data.profilePic;
+    }
+
+    loadMembers();
+    loadAdminOnlineMembers();
+});
+
+socket.on('user_access_changed', (data) => {
+    if (data.user === currentUser && !data.approved) {
+        showNotification('Tu acceso fue revocado.', 'error');
+        setTimeout(() => {
+            localStorage.clear();
+            window.location.href = 'index.html';
+        }, 1500);
+    }
+
+    loadAllUsers();
+    loadMembers();
+    loadAdminOnlineMembers();
 });

@@ -203,6 +203,53 @@ app.post("/admin/user/:user/role",(req,res)=>{
   res.json({success:true, roles: foundUser.roles});
 });
 
+// ================= UPDATE PROFILE PICTURE =================
+app.post("/user/:user/profile-pic",(req,res)=>{
+  const {user} = req.params;
+  const {profilePic} = req.body;
+
+  const foundUser = users.find(u => u.user === user);
+  if(!foundUser) return res.json({success:false, message:"Usuario no encontrado"});
+
+  foundUser.profilePic = profilePic;
+  saveData({users,tasks,messages,accessRequests});
+
+  if(io) io.emit("user_profile_updated", { user, profilePic });
+
+  res.json({success:true, profilePic});
+});
+
+// ================= DISABLE / ENABLE USER ACCESS =================
+app.post("/admin/user/:user/access",(req,res)=>{
+  const {user} = req.params;
+  const {action} = req.body; // 'disable' | 'enable'
+
+  const foundUser = users.find(u => u.user === user);
+  if(!foundUser) return res.json({success:false, message:"Usuario no encontrado"});
+
+  if(action === 'disable') {
+    foundUser.approved = false;
+
+    // Si el usuario está conectado, desconectarlo forzadamente
+    if(io) {
+      for (const [socketId, username] of connectedUsers.entries()) {
+        if (username === user) {
+          io.to(socketId).emit('force_logout');
+          io.sockets.sockets.get(socketId)?.disconnect(true);
+        }
+      }
+    }
+  } else if(action === 'enable') {
+    foundUser.approved = true;
+  }
+
+  saveData({users,tasks,messages,accessRequests});
+
+  if(io) io.emit("user_access_changed", { user, approved: foundUser.approved });
+
+  res.json({success:true, approved: foundUser.approved});
+});
+
 
 // ================= TASKS =================
 app.get("/tasks",(req,res)=>{
