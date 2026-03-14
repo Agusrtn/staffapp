@@ -633,6 +633,3 @@ socket.on('user_role_updated', (data) => {
         setTimeout(() => location.reload(), 1000);
     }
 });
-        loadAllUsers();
-    }
-});
