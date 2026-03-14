@@ -206,6 +206,13 @@
             .then(res => res.json())
             .then(data => {
                 if (data.success) {
+                    console.log('Login successful:', data);
+                    console.log('Saving to localStorage:', {
+                        user: user,
+                        roles: data.roles,
+                        profilePic: data.profilePic
+                    });
+
                     localStorage.setItem('currentUser', user);
                     localStorage.setItem('currentRoles', JSON.stringify(data.roles)); // Cambiar a roles
                     localStorage.setItem('currentProfilePic', data.profilePic);

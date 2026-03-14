@@ -4,6 +4,8 @@ const API_BASE = window.API_BASE || (window.location.hostname === 'localhost' ? 
 // Initialize Socket.io (connect to backend)
 const socket = io(API_BASE);
 
+console.log('Connecting to socket at:', API_BASE);
+
 // Global state
 let currentUser = localStorage.getItem('currentUser') || 'Usuario';
 let currentRoles = JSON.parse(localStorage.getItem('currentRoles')) || ['Staff']; // Cambiar a array
@@ -27,15 +29,22 @@ function isAdmin() {
 
 // Initialize dashboard on load
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('Dashboard loading...');
+    console.log('Current user from localStorage:', localStorage.getItem('currentUser'));
+    console.log('Current roles from localStorage:', localStorage.getItem('currentRoles'));
+
     document.getElementById('currentUser').textContent = currentUser;
     document.getElementById('profilePic').src = currentProfilePic;
     document.getElementById('modalProfilePic').src = currentProfilePic;
-    
+
     // Show admin button if user is admin
     if (isAdmin()) {
+        console.log('User is admin, showing admin button');
         document.getElementById('adminBtn').style.display = 'flex';
+    } else {
+        console.log('User is not admin, hiding admin button');
     }
-    
+
     socket.emit('user_joined', { user: currentUser, roles: currentRoles }); // Cambiar a roles
     loadMessages();
     loadTasks();
@@ -43,7 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderCalendar();
     loadMembers();
     loadAllUsers();
-    
+
     // If admin, load access requests and users
     if (isAdmin()) {
         loadAccessRequests();
