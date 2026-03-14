@@ -27,6 +27,12 @@ function isAdmin() {
     return hasRole('Director') || hasRole('Administrador') || currentUser === 'Agustinson';
 }
 
+// Get profile picture for a user (falls back to pravatar if missing)
+function getProfilePic(user) {
+    const u = allUsers.find(u => u.user === user);
+    return u?.profilePic || `https://i.pravatar.cc/150?u=${user}`;
+}
+
 // Initialize dashboard on load
 document.addEventListener('DOMContentLoaded', () => {
     console.log('Dashboard loading...');
@@ -103,7 +109,8 @@ function sendMessage() {
     const messageObj = {
         user: currentUser,
         text: msg,
-        timestamp: new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+        timestamp: new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
+        profilePic: currentProfilePic
     };
     
     socket.emit('chat_message', messageObj);
@@ -120,8 +127,9 @@ function displayMessage(messageObj) {
     const messagesArea = document.getElementById('messagesArea');
     const messageDiv = document.createElement('div');
     messageDiv.className = 'message';
+    const avatar = getProfilePic(messageObj.user);
     messageDiv.innerHTML = `
-        <img src="https://i.pravatar.cc/36?u=${messageObj.user}" alt="Avatar" class="message-avatar">
+        <img src="${avatar}" alt="Avatar" class="message-avatar">
         <div class="message-content">
             <div class="message-header">
                 <span class="message-author">${messageObj.user}</span>
@@ -144,7 +152,7 @@ function loadMessages() {
 socket.on('update_members', (membersList) => {
     members = membersList;
     loadMembers();
-    if (isAdmin()) loadAdminOnlineMembers();
+    if (isAdmin()) loadAdminMembers();
 });
 
 socket.on('user_joined', (data) => {
@@ -198,8 +206,9 @@ function loadMembers() {
             rolesHtml = `<span class="role-tag ${roleClass}" title="${allRolesText}">${primaryRole}</span>`;
         }
         
+        const avatar = getProfilePic(user.user);
         card.innerHTML = `
-            <img src="${user.profilePic}" alt="Avatar" class="member-avatar">
+            <img src="${avatar}" alt="Avatar" class="member-avatar">
             <p class="member-name">${user.user}</p>
             ${rolesHtml}
             <p class="member-status ${statusClass}"><span class="status-dot ${statusClass}"></span> ${statusText}</p>
@@ -534,6 +543,9 @@ function saveProfilePic(newPic) {
         // no hacemos nada si falla, la foto se mantiene en el cliente
     });
 
+    // Refrescar el chat para que los mensajes antiguos usen la nueva foto
+    loadMessages();
+
     showNotification('Foto actualizada', 'success');
     closeProfileModal();
 }
@@ -562,55 +574,64 @@ function loadAllUsers() {
 
             if (isAdmin()) {
                 loadMembers();
-                loadAdminOnlineMembers();
+                loadAdminMembers();
             }
         });
 }
 
-function loadAdminOnlineMembers() {
+function loadAdminMembers() {
     const container = document.getElementById('onlineMembers');
     if (!container) return;
 
     container.innerHTML = '';
 
-    const onlineUsernames = Array.from(new Set(members.map(m => (typeof m === 'string' ? m : m.user))));
-    if (onlineUsernames.length === 0) {
-        container.innerHTML = '<p style="color: var(--secondary);">No hay usuarios conectados</p>';
+    if (allUsers.length === 0) {
+        container.innerHTML = '<p style="color: var(--secondary);">No hay miembros registrados</p>';
         return;
     }
 
-    onlineUsernames.forEach(user => {
-        const userData = allUsers.find(u => u.user === user) || { user, profilePic: `https://i.pravatar.cc/150?u=${user}` };
+    const onlineSet = new Set(members.map(m => (typeof m === 'string' ? m : m.user)));
+
+    allUsers.forEach(user => {
+        const isOnline = onlineSet.has(user.user);
+        const statusText = isOnline ? 'Activo' : 'Inactivo';
+        const statusClass = isOnline ? '' : 'offline';
+        const avatar = getProfilePic(user.user);
+
         const card = document.createElement('div');
         card.className = 'member-card admin-online';
         card.innerHTML = `
-            <img src="${userData.profilePic}" alt="Avatar" class="member-avatar">
-            <p class="member-name">${user}</p>
-            <button class="remove-access-btn" onclick="disableUserAccess('${user}')">
-                <i class="fas fa-minus"></i>
+            <img src="${avatar}" alt="Avatar" class="member-avatar">
+            <div style="flex: 1;">
+                <p class="member-name">${user.user}</p>
+                <p class="member-status ${statusClass}"><span class="status-dot ${statusClass}"></span> ${statusText}</p>
+            </div>
+            <button class="remove-access-btn" onclick="setUserAccess('${user.user}', '${user.approved ? 'disable' : 'enable'}')" title="${user.approved ? 'Revocar acceso' : 'Habilitar acceso'}">
+                <i class="fas fa-${user.approved ? 'minus' : 'plus'}"></i>
             </button>
         `;
         container.appendChild(card);
     });
 }
 
-function disableUserAccess(user) {
-    if (!confirm(`¿Quitar acceso a ${user}? Esto bloqueará su ingreso.`)) return;
+function setUserAccess(user, action) {
+    const actionLabel = action === 'disable' ? 'revocar el acceso' : 'habilitar el acceso';
+    if (!confirm(`¿Quieres ${actionLabel} a ${user}?`)) return;
 
     fetch(`${API_BASE}/admin/user/${encodeURIComponent(user)}/access`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'disable' })
+        body: JSON.stringify({ action })
     })
     .then(res => res.json())
     .then(data => {
         if (data.success) {
-            showNotification(`Acceso revocado para ${user}`, 'success');
+            showNotification(`${action === 'disable' ? 'Acceso revocado' : 'Acceso habilitado'} para ${user}`, 'success');
             loadAllUsers();
             loadMembers();
-            loadAdminOnlineMembers();
+            loadAdminMembers();
         } else {
-            showNotification('No se pudo revocar el acceso', 'error');
+            showNotification('No se pudo actualizar el acceso', 'error');
         }
     })
     .catch(() => showNotification('Error de conexión', 'error'));
@@ -798,7 +819,7 @@ function addUserRole(user, role) {
 socket.on('update_members', (membersList) => {
     members = membersList;
     loadMembers();
-    if (isAdmin()) loadAdminOnlineMembers();
+    if (isAdmin()) loadAdminMembers();
 });
 
 socket.on('user_joined', (data) => {
@@ -847,7 +868,7 @@ socket.on('user_profile_updated', (data) => {
     }
 
     loadMembers();
-    loadAdminOnlineMembers();
+    loadAdminMembers();
 });
 
 socket.on('user_access_changed', (data) => {
@@ -861,5 +882,5 @@ socket.on('user_access_changed', (data) => {
 
     loadAllUsers();
     loadMembers();
-    loadAdminOnlineMembers();
+    loadAdminMembers();
 });
