@@ -469,7 +469,7 @@ function loadAllUsers() {
         .then(res => res.json())
         .then(users => {
             allUsers = users;
-            if (currentRole === 'Director' || currentUser === 'Agustinson') {
+            if (isAdmin()) {
                 loadMembers();
             }
         });
