@@ -1,0 +1,21 @@
+{
+  "users": [
+    {
+      "user": "Agustinson",
+      "password": "Maragus2417",
+      "role": "Director",
+      "approved": true,
+      "profilePic": "https://i.pravatar.cc/150?u=Agustinson"
+    },
+    {
+      "user": "test",
+      "password": "test",
+      "role": "Staff",
+      "approved": true,
+      "profilePic": "https://i.pravatar.cc/150?u=test"
+    }
+  ],
+  "tasks": [],
+  "messages": [],
+  "accessRequests": []
+}

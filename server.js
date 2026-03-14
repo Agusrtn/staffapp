@@ -49,8 +49,22 @@ const ADMIN_USER = {
 // agregar admin si no existe
 if (!users.find(u => u.user === ADMIN_USER.user)) {
   users.push(ADMIN_USER);
-  saveData({ users, tasks, messages, accessRequests });
 }
+
+const TEST_USER = {
+  user: "test",
+  password: "test",
+  role: "Staff",
+  approved: true,
+  profilePic: "https://i.pravatar.cc/150?u=test"
+};
+
+// agregar test si no existe
+if (!users.find(u => u.user === TEST_USER.user)) {
+  users.push(TEST_USER);
+}
+
+saveData({ users, tasks, messages, accessRequests });
 
 const ROLES = ["Director", "Co Director", "Supervisor Staff", "Senior Staff", "Staff"];
 
